@@ -1013,81 +1013,6 @@ _.localStorage = {
 };
 
 _.register_event = (function() {
-    // written by Dean Edwards, 2005
-    // with input from Tino Zijdel - crisp@xs4all.nl
-    // with input from Carl Sverre - mail@carlsverre.com
-    // with input from Mixpanel
-    // http://dean.edwards.name/weblog/2005/10/add-event/
-    // https://gist.github.com/1930440
-
-    /**
-     * @param {Object} element
-     * @param {string} type
-     * @param {function(...*)} handler
-     * @param {boolean=} oldSchool
-     * @param {boolean=} useCapture
-     */
-    var register_event = function(element, type, handler, oldSchool, useCapture) {
-        if (!element) {
-            console$1.error('No valid element provided to register_event');
-            return;
-        }
-
-        if (element.addEventListener && !oldSchool) {
-            element.addEventListener(type, handler, !!useCapture);
-        } else {
-            var ontype = 'on' + type;
-            var old_handler = element[ontype]; // can be undefined
-            element[ontype] = makeHandler(element, handler, old_handler);
-        }
-    };
-
-    function makeHandler(element, new_handler, old_handlers) {
-        var handler = function(event) {
-            event = event || fixEvent(window.event);
-
-            // this basically happens in firefox whenever another script
-            // overwrites the onload callback and doesn't pass the event
-            // object to previously defined callbacks.  All the browsers
-            // that don't define window.event implement addEventListener
-            // so the dom_loaded handler will still be fired as usual.
-            if (!event) {
-                return undefined;
-            }
-
-            var ret = true;
-            var old_result, new_result;
-
-            if (_.isFunction(old_handlers)) {
-                old_result = old_handlers(event);
-            }
-            new_result = new_handler.call(element, event);
-
-            if ((false === old_result) || (false === new_result)) {
-                ret = false;
-            }
-
-            return ret;
-        };
-
-        return handler;
-    }
-
-    function fixEvent(event) {
-        if (event) {
-            event.preventDefault = fixEvent.preventDefault;
-            event.stopPropagation = fixEvent.stopPropagation;
-        }
-        return event;
-    }
-    fixEvent.preventDefault = function() {
-        this.returnValue = false;
-    };
-    fixEvent.stopPropagation = function() {
-        this.cancelBubble = true;
-    };
-
-    return register_event;
 })();
 
 
@@ -2050,155 +1975,6 @@ _.bind_instance_methods(autotrack);
 _.safewrap_instance_methods(autotrack);
 
 /**
- * DomTracker Object
- * @constructor
- */
-var DomTracker = function() {};
-
-
-// interface
-DomTracker.prototype.create_properties = function() {};
-DomTracker.prototype.event_handler = function() {};
-DomTracker.prototype.after_track_handler = function() {};
-
-DomTracker.prototype.init = function(mixpanel_instance) {
-    this.mp = mixpanel_instance;
-    return this;
-};
-
-/**
- * @param {Object|string} query
- * @param {string} event_name
- * @param {Object=} properties
- * @param {function=} user_callback
- */
-DomTracker.prototype.track = function(query, event_name, properties, user_callback) {
-    var that = this;
-    var elements = _.dom_query(query);
-
-    if (elements.length === 0) {
-        console$1.error('The DOM query (' + query + ') returned 0 elements');
-        return;
-    }
-
-    _.each(elements, function(element) {
-        _.register_event(element, this.override_event, function(e) {
-            var options = {};
-            var props = that.create_properties(properties, this);
-            var timeout = that.mp.get_config('track_links_timeout');
-
-            that.event_handler(e, this, options);
-
-            // in case the mixpanel servers don't get back to us in time
-            window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
-
-            // fire the tracking event
-            that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
-        });
-    }, this);
-
-    return true;
-};
-
-/**
- * @param {function} user_callback
- * @param {Object} props
- * @param {boolean=} timeout_occured
- */
-DomTracker.prototype.track_callback = function(user_callback, props, options, timeout_occured) {
-    timeout_occured = timeout_occured || false;
-    var that = this;
-
-    return function() {
-        // options is referenced from both callbacks, so we can have
-        // a 'lock' of sorts to ensure only one fires
-        if (options.callback_fired) { return; }
-        options.callback_fired = true;
-
-        if (user_callback && user_callback(timeout_occured, props) === false) {
-            // user can prevent the default functionality by
-            // returning false from their callback
-            return;
-        }
-
-        that.after_track_handler(props, options, timeout_occured);
-    };
-};
-
-DomTracker.prototype.create_properties = function(properties, element) {
-    var props;
-
-    if (typeof(properties) === 'function') {
-        props = properties(element);
-    } else {
-        props = _.extend({}, properties);
-    }
-
-    return props;
-};
-
-/**
- * LinkTracker Object
- * @constructor
- * @extends DomTracker
- */
-var LinkTracker = function() {
-    this.override_event = 'click';
-};
-_.inherit(LinkTracker, DomTracker);
-
-LinkTracker.prototype.create_properties = function(properties, element) {
-    var props = LinkTracker.superclass.create_properties.apply(this, arguments);
-
-    if (element.href) { props['url'] = element.href; }
-
-    return props;
-};
-
-LinkTracker.prototype.event_handler = function(evt, element, options) {
-    options.new_tab = (
-        evt.which === 2 ||
-        evt.metaKey ||
-        evt.ctrlKey ||
-        element.target === '_blank'
-    );
-    options.href = element.href;
-
-    if (!options.new_tab) {
-        evt.preventDefault();
-    }
-};
-
-LinkTracker.prototype.after_track_handler = function(props, options) {
-    if (options.new_tab) { return; }
-
-    setTimeout(function() {
-        window.location = options.href;
-    }, 0);
-};
-
-/**
- * FormTracker Object
- * @constructor
- * @extends DomTracker
- */
-var FormTracker = function() {
-    this.override_event = 'submit';
-};
-_.inherit(FormTracker, DomTracker);
-
-FormTracker.prototype.event_handler = function(evt, element, options) {
-    options.element = element;
-    evt.preventDefault();
-};
-
-FormTracker.prototype.after_track_handler = function(props, options) {
-    setTimeout(function() {
-        options.element.submit();
-    }, 0);
-};
-
-/**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
  * @callback trackFunction
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
@@ -2984,23 +2760,6 @@ MixpanelPersistence.prototype._get_or_create_queue = function(queue, default_val
     default_val = _.isUndefined(default_val) ? {} : default_val;
 
     return this['props'][key] || (this['props'][key] = default_val);
-};
-
-MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
-    timers[event_name] = timestamp;
-    this['props'][EVENT_TIMERS_KEY] = timers;
-    this.save();
-};
-
-MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
-    var timestamp = timers[event_name];
-    if (!_.isUndefined(timestamp)) {
-        delete this['props'][EVENT_TIMERS_KEY][event_name];
-        this.save();
-    }
-    return timestamp;
 };
 
 /*
@@ -4520,13 +4279,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     properties = properties || {};
     properties['token'] = this.get_config('token');
 
-    // set $duration if time_event was previously called for this event
-    var start_timestamp = this['persistence'].remove_event_timer(event_name);
-    if (!_.isUndefined(start_timestamp)) {
-        var duration_in_ms = new Date().getTime() - start_timestamp;
-        properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
-    }
-
     // update persistence
     this['persistence'].update_search_keyword(document$1.referrer);
 
@@ -4587,99 +4339,6 @@ MixpanelLib.prototype.track_pageview = function(page) {
         page = document$1.location.href;
     }
     this.track('mp_page_view', _.info.pageviewInfo(page));
-};
-
-/**
- * Track clicks on a set of document elements. Selector must be a
- * valid query. Elements must exist on the page at the time track_links is called.
- *
- * ### Usage:
- *
- *     // track click for link id #nav
- *     mixpanel.track_links('#nav', 'Clicked Nav Link');
- *
- * ### Notes:
- *
- * This function will wait up to 300 ms for the Mixpanel
- * servers to respond. If they have not responded by that time
- * it will head to the link without ensuring that your event
- * has been tracked.  To configure this timeout please see the
- * set_config() documentation below.
- *
- * If you pass a function in as the properties argument, the
- * function will receive the DOMElement that triggered the
- * event as an argument.  You are expected to return an object
- * from the function; any properties defined on this object
- * will be sent to mixpanel as event properties.
- *
- * @type {Function}
- * @param {Object|String} query A valid DOM query, element or jQuery-esque list
- * @param {String} event_name The name of the event to track
- * @param {Object|Function} [properties] A properties object or function that returns a dictionary of properties when passed a DOMElement
- */
-MixpanelLib.prototype.track_links = function() {
-    return this._track_dom.call(this, LinkTracker, arguments);
-};
-
-/**
- * Track form submissions. Selector must be a valid query.
- *
- * ### Usage:
- *
- *     // track submission for form id 'register'
- *     mixpanel.track_forms('#register', 'Created Account');
- *
- * ### Notes:
- *
- * This function will wait up to 300 ms for the mixpanel
- * servers to respond, if they have not responded by that time
- * it will head to the link without ensuring that your event
- * has been tracked.  To configure this timeout please see the
- * set_config() documentation below.
- *
- * If you pass a function in as the properties argument, the
- * function will receive the DOMElement that triggered the
- * event as an argument.  You are expected to return an object
- * from the function; any properties defined on this object
- * will be sent to mixpanel as event properties.
- *
- * @type {Function}
- * @param {Object|String} query A valid DOM query, element or jQuery-esque list
- * @param {String} event_name The name of the event to track
- * @param {Object|Function} [properties] This can be a set of properties, or a function that returns a set of properties after being passed a DOMElement
- */
-MixpanelLib.prototype.track_forms = function() {
-    return this._track_dom.call(this, FormTracker, arguments);
-};
-
-/**
- * Time an event by including the time between this call and a
- * later 'track' call for the same event in the properties sent
- * with the event.
- *
- * ### Usage:
- *
- *     // time an event named 'Registered'
- *     mixpanel.time_event('Registered');
- *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
- *
- * When called for a particular event name, the next track call for that event
- * name will include the elapsed time between the 'time_event' and 'track'
- * calls. This value is stored as seconds in the '$duration' property.
- *
- * @param {String} event_name The name of the event.
- */
-MixpanelLib.prototype.time_event = function(event_name) {
-    if (_.isUndefined(event_name)) {
-        console$1.error('No event name provided to mixpanel.time_event');
-        return;
-    }
-
-    if (this._event_is_disabled(event_name)) {
-        return;
-    }
-
-    this['persistence'].set_event_timer(event_name,  new Date().getTime());
 };
 
 /**
@@ -5286,7 +4945,6 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
 MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
 MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
 MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
-MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
 MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
 MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
 MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
@@ -5414,9 +5072,6 @@ var add_dom_loaded_handler = function() {
             do_scroll_check();
         }
     }
-
-    // fallback handler, always will work
-    _.register_event(window$1, 'load', dom_loaded_handler, true);
 };
 
 function init_as_module() {
