@@ -1,0 +1,25 @@
+{
+  "name": "figma-mixpanel",
+  "version": "1.0.0",
+  "description": "Mixpanel client patched for Figma plugins",
+  "main": "mixpanel.patched.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/okotoki/figma-mixpanel.git"
+  },
+  "keywords": [
+    "figma",
+    "figma-plugins",
+    "mixpanel"
+  ],
+  "author": "Opudalo",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/okotoki/figma-mixpanel/issues"
+  },
+  "homepage": "https://github.com/okotoki/figma-mixpanel#readme",
+  "devDpendencies": {}
+}
