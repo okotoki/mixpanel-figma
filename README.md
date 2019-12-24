@@ -12,7 +12,7 @@ Mixpanel client has configuration option to switch off persistance `disable_pers
 Patch the original file to not access `document.cookie`/`localStorage`.
 
 Original file - [mixpanel/mixpanel-js](https://github.com/mixpanel/mixpanel-js/blob/1c4d98b4a485fbf4dc4421f00c33f3b19530b307/dist/mixpanel.cjs.js)
-Patched file – [mixpanel.patched.js](mixpanel.patched.js)
+Patched file – [mixpanel-patched.js](mixpanel-patched.js)
 
 ## Bonus points. Size reduction (~250kb to 130kb).
 Mixpanel client is a HUGE file and team is [not addressing it](https://github.com/mixpanel/mixpanel-js/issues/128).
@@ -23,7 +23,7 @@ So I stripped file to make it much smaller. Things removed:
 - notification related things (don't even know what they are)
 - autotrack – some feature Mixpanel discontinued
 
-If size does not bother you or something you need was removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel.patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
+If size does not bother you or something you need was removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel-patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
 
 ## Usage
 

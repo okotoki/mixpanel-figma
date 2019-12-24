@@ -2,7 +2,7 @@
   "name": "figma-mixpanel",
   "version": "2.0.0",
   "description": "Mixpanel client patched for Figma plugins",
-  "main": "mixpanel.patched.js",
+  "main": "mixpanel-patched.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
