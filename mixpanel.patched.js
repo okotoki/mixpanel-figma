@@ -30,7 +30,6 @@ if (typeof(window) === 'undefined') {
  */
 
 var ArrayProto = Array.prototype;
-var FuncProto = Function.prototype;
 var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
@@ -41,19 +40,10 @@ var document$1 = window$1.document;
 var windowOpera = window$1.opera;
 var screen = window$1.screen;
 var userAgent = navigator$1.userAgent;
-var nativeBind = FuncProto.bind;
 var nativeForEach = ArrayProto.forEach;
 var nativeIndexOf = ArrayProto.indexOf;
 var nativeIsArray = Array.isArray;
 var breaker = {};
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-
-var _ = {
-    trim: function(str) {
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
-        return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
-    }
-};
 
 // Console override
 var console$1 = {
@@ -100,38 +90,7 @@ var console$1 = {
 
 // UNDERSCORE
 // Embed part of the Underscore Library
-_.bind = function(func, context) {
-    var args, bound;
-    if (nativeBind && func.bind === nativeBind) {
-        return nativeBind.apply(func, slice.call(arguments, 1));
-    }
-    if (!_.isFunction(func)) {
-        throw new TypeError();
-    }
-    args = slice.call(arguments, 2);
-    bound = function() {
-        if (!(this instanceof bound)) {
-            return func.apply(context, args.concat(slice.call(arguments)));
-        }
-        var ctor = {};
-        ctor.prototype = func.prototype;
-        var self = new ctor();
-        ctor.prototype = null;
-        var result = func.apply(self, args.concat(slice.call(arguments)));
-        if (Object(result) === result) {
-            return result;
-        }
-        return self;
-    };
-    return bound;
-};
-
-_.bind_instance_methods = function(obj) {
-    for (var func in obj) {
-        if (typeof(obj[func]) === 'function') {
-            obj[func] = _.bind(obj[func], obj);
-        }
-    }
+var _ = {
 };
 
 /**
@@ -160,19 +119,6 @@ _.each = function(obj, iterator, context) {
             }
         }
     }
-};
-
-_.escapeHTML = function(s) {
-    var escaped = s;
-    if (escaped && _.isString(escaped)) {
-        escaped = escaped
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-    return escaped;
 };
 
 _.extend = function(obj) {
@@ -243,10 +189,6 @@ _.values = function(obj) {
     return results;
 };
 
-_.identity = function(value) {
-    return value;
-};
-
 _.include = function(obj, target) {
     var found = false;
     if (obj === null) {
@@ -268,13 +210,6 @@ _.includes = function(str, needle) {
 };
 
 // Underscore Addons
-_.inherit = function(subclass, superclass) {
-    subclass.prototype = new superclass();
-    subclass.prototype.constructor = subclass;
-    subclass.superclass = superclass.prototype;
-    return subclass;
-};
-
 _.isObject = function(obj) {
     return (obj === Object(obj) && !_.isArray(obj));
 };
@@ -307,10 +242,6 @@ _.isNumber = function(obj) {
     return toString.call(obj) == '[object Number]';
 };
 
-_.isElement = function(obj) {
-    return !!(obj && obj.nodeType === 1);
-};
-
 _.encodeDates = function(obj) {
     _.each(obj, function(v, k) {
         if (_.isDate(v)) {
@@ -320,13 +251,6 @@ _.encodeDates = function(obj) {
         }
     });
     return obj;
-};
-
-_.timestamp = function() {
-    Date.now = Date.now || function() {
-        return +new Date;
-    };
-    return Date.now();
 };
 
 _.formatDate = function(d) {
@@ -358,14 +282,6 @@ _.safewrap = function(f) {
 _.safewrap_class = function(klass, functions) {
     for (var i = 0; i < functions.length; i++) {
         klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
-    }
-};
-
-_.safewrap_instance_methods = function(obj) {
-    for (var func in obj) {
-        if (typeof(obj[func]) === 'function') {
-            obj[func] = _.safewrap(obj[func]);
-        }
     }
 };
 
@@ -956,11 +872,6 @@ _.getQueryParam = function(url, param) {
     }
 };
 
-_.getHashParam = function(hash, param) {
-    var matches = hash.match(new RegExp(param + '=([^&]*)'));
-    return matches ? matches[1] : null;
-};
-
 // _.cookie
 // Methods partially borrowed from quirksmode.org/js/cookies.html
 _.cookie = {
@@ -1011,206 +922,6 @@ _.localStorage = {
         return
     }
 };
-
-_.register_event = (function() {
-})();
-
-
-var TOKEN_MATCH_REGEX = new RegExp('^(\\w*)\\[(\\w+)([=~\\|\\^\\$\\*]?)=?"?([^\\]"]*)"?\\]$');
-
-_.dom_query = (function() {
-    /* document.getElementsBySelector(selector)
-    - returns an array of element objects from the current document
-    matching the CSS selector. Selectors can contain element names,
-    class names and ids and can be nested. For example:
-
-    elements = document.getElementsBySelector('div#main p a.external')
-
-    Will return an array of all 'a' elements with 'external' in their
-    class attribute that are contained inside 'p' elements that are
-    contained inside the 'div' element which has id="main"
-
-    New in version 0.4: Support for CSS2 and CSS3 attribute selectors:
-    See http://www.w3.org/TR/css3-selectors/#attribute-selectors
-
-    Version 0.4 - Simon Willison, March 25th 2003
-    -- Works in Phoenix 0.5, Mozilla 1.3, Opera 7, Internet Explorer 6, Internet Explorer 5 on Windows
-    -- Opera 7 fails
-
-    Version 0.5 - Carl Sverre, Jan 7th 2013
-    -- Now uses jQuery-esque `hasClass` for testing class name
-    equality.  This fixes a bug related to '-' characters being
-    considered not part of a 'word' in regex.
-    */
-
-    function getAllChildren(e) {
-        // Returns all children of element. Workaround required for IE5/Windows. Ugh.
-        return e.all ? e.all : e.getElementsByTagName('*');
-    }
-
-    var bad_whitespace = /[\t\r\n]/g;
-
-    function hasClass(elem, selector) {
-        var className = ' ' + selector + ' ';
-        return ((' ' + elem.className + ' ').replace(bad_whitespace, ' ').indexOf(className) >= 0);
-    }
-
-    function getElementsBySelector(selector) {
-        // Attempt to fail gracefully in lesser browsers
-        if (!document$1.getElementsByTagName) {
-            return [];
-        }
-        // Split selector in to tokens
-        var tokens = selector.split(' ');
-        var token, bits, tagName, found, foundCount, i, j, k, elements, currentContextIndex;
-        var currentContext = [document$1];
-        for (i = 0; i < tokens.length; i++) {
-            token = tokens[i].replace(/^\s+/, '').replace(/\s+$/, '');
-            if (token.indexOf('#') > -1) {
-                // Token is an ID selector
-                bits = token.split('#');
-                tagName = bits[0];
-                var id = bits[1];
-                var element = document$1.getElementById(id);
-                if (!element || (tagName && element.nodeName.toLowerCase() != tagName)) {
-                    // element not found or tag with that ID not found, return false
-                    return [];
-                }
-                // Set currentContext to contain just this element
-                currentContext = [element];
-                continue; // Skip to next token
-            }
-            if (token.indexOf('.') > -1) {
-                // Token contains a class selector
-                bits = token.split('.');
-                tagName = bits[0];
-                var className = bits[1];
-                if (!tagName) {
-                    tagName = '*';
-                }
-                // Get elements matching tag, filter them for class selector
-                found = [];
-                foundCount = 0;
-                for (j = 0; j < currentContext.length; j++) {
-                    if (tagName == '*') {
-                        elements = getAllChildren(currentContext[j]);
-                    } else {
-                        elements = currentContext[j].getElementsByTagName(tagName);
-                    }
-                    for (k = 0; k < elements.length; k++) {
-                        found[foundCount++] = elements[k];
-                    }
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                for (j = 0; j < found.length; j++) {
-                    if (found[j].className &&
-                        _.isString(found[j].className) && // some SVG elements have classNames which are not strings
-                        hasClass(found[j], className)
-                    ) {
-                        currentContext[currentContextIndex++] = found[j];
-                    }
-                }
-                continue; // Skip to next token
-            }
-            // Code to deal with attribute selectors
-            var token_match = token.match(TOKEN_MATCH_REGEX);
-            if (token_match) {
-                tagName = token_match[1];
-                var attrName = token_match[2];
-                var attrOperator = token_match[3];
-                var attrValue = token_match[4];
-                if (!tagName) {
-                    tagName = '*';
-                }
-                // Grab all of the tagName elements within current context
-                found = [];
-                foundCount = 0;
-                for (j = 0; j < currentContext.length; j++) {
-                    if (tagName == '*') {
-                        elements = getAllChildren(currentContext[j]);
-                    } else {
-                        elements = currentContext[j].getElementsByTagName(tagName);
-                    }
-                    for (k = 0; k < elements.length; k++) {
-                        found[foundCount++] = elements[k];
-                    }
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                var checkFunction; // This function will be used to filter the elements
-                switch (attrOperator) {
-                    case '=': // Equality
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName) == attrValue);
-                        };
-                        break;
-                    case '~': // Match one of space seperated words
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).match(new RegExp('\\b' + attrValue + '\\b')));
-                        };
-                        break;
-                    case '|': // Match start with value followed by optional hyphen
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).match(new RegExp('^' + attrValue + '-?')));
-                        };
-                        break;
-                    case '^': // Match starts with value
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).indexOf(attrValue) === 0);
-                        };
-                        break;
-                    case '$': // Match ends with value - fails with "Warning" in Opera 7
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).lastIndexOf(attrValue) == e.getAttribute(attrName).length - attrValue.length);
-                        };
-                        break;
-                    case '*': // Match ends with value
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).indexOf(attrValue) > -1);
-                        };
-                        break;
-                    default:
-                        // Just test for existence of attribute
-                        checkFunction = function(e) {
-                            return e.getAttribute(attrName);
-                        };
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                for (j = 0; j < found.length; j++) {
-                    if (checkFunction(found[j])) {
-                        currentContext[currentContextIndex++] = found[j];
-                    }
-                }
-                // alert('Attribute Selector: '+tagName+' '+attrName+' '+attrOperator+' '+attrValue);
-                continue; // Skip to next token
-            }
-            // If we get here, token is JUST an element (not a class or ID selector)
-            tagName = token;
-            found = [];
-            foundCount = 0;
-            for (j = 0; j < currentContext.length; j++) {
-                elements = currentContext[j].getElementsByTagName(tagName);
-                for (k = 0; k < elements.length; k++) {
-                    found[foundCount++] = elements[k];
-                }
-            }
-            currentContext = found;
-        }
-        return currentContext;
-    }
-
-    return function(query) {
-        if (_.isElement(query)) {
-            return [query];
-        } else if (_.isObject(query) && !_.isUndefined(query.length)) {
-            return query;
-        } else {
-            return getElementsBySelector.call(this, query);
-        }
-    };
-})();
 
 _.info = {
     campaignParams: function() {
@@ -1406,7 +1117,7 @@ _.info = {
             'mp_lib': 'web',
             '$lib_version': Config.LIB_VERSION,
             '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
-            'time': _.timestamp() / 1000 // epoch time in seconds
+            'time': Date.now() / 1000 // epoch time in seconds
         });
     },
 
@@ -4137,7 +3848,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 // call a base gdpr function after constructing the appropriate token and options args
 MixpanelLib.prototype._gdpr_call_func = function(func, options) {
     options = _.extend({
-        'track': _.bind(this.track, this),
+        'track': this.track.bind(this),
         'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
         'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
         'cookie_expiration': this.get_config('cookie_expiration'),
