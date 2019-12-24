@@ -17,7 +17,7 @@ Patched file – [mixpanel.patched.js](mixpanel.patched.js)
 ## Bonus points. Size reduction.
 Mixpanel client is a HUGE file (~250kb) and team is [not addressing it](https://github.com/mixpanel/mixpanel-js/issues/128).
 
-So I stripped file to make it much smaller. 
+So I stripped file to make it much smaller.
 
 If size does not bother you or something you need was removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel.patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
 
