@@ -5,24 +5,7 @@ var Config = {
     LIB_VERSION: '2.32.0'
 };
 
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var window$1;
-if (typeof(window) === 'undefined') {
-    var loc = {
-        hostname: ''
-    };
-    window$1 = {
-        navigator: { userAgent: '' },
-        document: {
-            location: loc,
-            referrer: ''
-        },
-        screen: { width: 0, height: 0 },
-        location: loc
-    };
-} else {
-    window$1 = window;
-}
+var window$1 = window;
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -443,241 +426,6 @@ _.JSONEncode = (function() {
     };
 })();
 
-/**
- * From https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
- * Slightly modified to throw a real Error rather than a POJO
- */
-_.JSONDecode = (function() {
-    var at, // The index of the current character
-        ch, // The current character
-        escapee = {
-            '"': '"',
-            '\\': '\\',
-            '/': '/',
-            'b': '\b',
-            'f': '\f',
-            'n': '\n',
-            'r': '\r',
-            't': '\t'
-        },
-        text,
-        error = function(m) {
-            var e = new SyntaxError(m);
-            e.at = at;
-            e.text = text;
-            throw e;
-        },
-        next = function(c) {
-            // If a c parameter is provided, verify that it matches the current character.
-            if (c && c !== ch) {
-                error('Expected \'' + c + '\' instead of \'' + ch + '\'');
-            }
-            // Get the next character. When there are no more characters,
-            // return the empty string.
-            ch = text.charAt(at);
-            at += 1;
-            return ch;
-        },
-        number = function() {
-            // Parse a number value.
-            var number,
-                string = '';
-
-            if (ch === '-') {
-                string = '-';
-                next('-');
-            }
-            while (ch >= '0' && ch <= '9') {
-                string += ch;
-                next();
-            }
-            if (ch === '.') {
-                string += '.';
-                while (next() && ch >= '0' && ch <= '9') {
-                    string += ch;
-                }
-            }
-            if (ch === 'e' || ch === 'E') {
-                string += ch;
-                next();
-                if (ch === '-' || ch === '+') {
-                    string += ch;
-                    next();
-                }
-                while (ch >= '0' && ch <= '9') {
-                    string += ch;
-                    next();
-                }
-            }
-            number = +string;
-            if (!isFinite(number)) {
-                error('Bad number');
-            } else {
-                return number;
-            }
-        },
-
-        string = function() {
-            // Parse a string value.
-            var hex,
-                i,
-                string = '',
-                uffff;
-            // When parsing for string values, we must look for " and \ characters.
-            if (ch === '"') {
-                while (next()) {
-                    if (ch === '"') {
-                        next();
-                        return string;
-                    }
-                    if (ch === '\\') {
-                        next();
-                        if (ch === 'u') {
-                            uffff = 0;
-                            for (i = 0; i < 4; i += 1) {
-                                hex = parseInt(next(), 16);
-                                if (!isFinite(hex)) {
-                                    break;
-                                }
-                                uffff = uffff * 16 + hex;
-                            }
-                            string += String.fromCharCode(uffff);
-                        } else if (typeof escapee[ch] === 'string') {
-                            string += escapee[ch];
-                        } else {
-                            break;
-                        }
-                    } else {
-                        string += ch;
-                    }
-                }
-            }
-            error('Bad string');
-        },
-        white = function() {
-            // Skip whitespace.
-            while (ch && ch <= ' ') {
-                next();
-            }
-        },
-        word = function() {
-            // true, false, or null.
-            switch (ch) {
-                case 't':
-                    next('t');
-                    next('r');
-                    next('u');
-                    next('e');
-                    return true;
-                case 'f':
-                    next('f');
-                    next('a');
-                    next('l');
-                    next('s');
-                    next('e');
-                    return false;
-                case 'n':
-                    next('n');
-                    next('u');
-                    next('l');
-                    next('l');
-                    return null;
-            }
-            error('Unexpected "' + ch + '"');
-        },
-        value, // Placeholder for the value function.
-        array = function() {
-            // Parse an array value.
-            var array = [];
-
-            if (ch === '[') {
-                next('[');
-                white();
-                if (ch === ']') {
-                    next(']');
-                    return array; // empty array
-                }
-                while (ch) {
-                    array.push(value());
-                    white();
-                    if (ch === ']') {
-                        next(']');
-                        return array;
-                    }
-                    next(',');
-                    white();
-                }
-            }
-            error('Bad array');
-        },
-        object = function() {
-            // Parse an object value.
-            var key,
-                object = {};
-
-            if (ch === '{') {
-                next('{');
-                white();
-                if (ch === '}') {
-                    next('}');
-                    return object; // empty object
-                }
-                while (ch) {
-                    key = string();
-                    white();
-                    next(':');
-                    if (Object.hasOwnProperty.call(object, key)) {
-                        error('Duplicate key "' + key + '"');
-                    }
-                    object[key] = value();
-                    white();
-                    if (ch === '}') {
-                        next('}');
-                        return object;
-                    }
-                    next(',');
-                    white();
-                }
-            }
-            error('Bad object');
-        };
-
-    value = function() {
-        // Parse a JSON value. It could be an object, an array, a string,
-        // a number, or a word.
-        white();
-        switch (ch) {
-            case '{':
-                return object();
-            case '[':
-                return array();
-            case '"':
-                return string();
-            case '-':
-                return number();
-            default:
-                return ch >= '0' && ch <= '9' ? number() : word();
-        }
-    };
-
-    // Return the json_parse function. It will have access to all of the
-    // above functions and variables.
-    return function(source) {
-        var result;
-
-        text = source;
-        at = 0;
-        ch = ' ';
-        result = value();
-        white();
-        if (ch) {
-            error('Syntax error');
-        }
-
-        return result;
-    };
-})();
-
 _.base64Encode = function(data) {
     var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
     var o1, o2, o3, h1, h2, h3, h4, bits, i = 0,
@@ -938,37 +686,6 @@ _.info = {
         return params;
     },
 
-    searchEngine: function(referrer) {
-        if (referrer.search('https?://(.*)google.([^/?]*)') === 0) {
-            return 'google';
-        } else if (referrer.search('https?://(.*)bing.com') === 0) {
-            return 'bing';
-        } else if (referrer.search('https?://(.*)yahoo.com') === 0) {
-            return 'yahoo';
-        } else if (referrer.search('https?://(.*)duckduckgo.com') === 0) {
-            return 'duckduckgo';
-        } else {
-            return null;
-        }
-    },
-
-    searchInfo: function(referrer) {
-        var search = _.info.searchEngine(referrer),
-            param = (search != 'yahoo') ? 'q' : 'p',
-            ret = {};
-
-        if (search !== null) {
-            ret['$search_engine'] = search;
-
-            var keyword = _.getQueryParam(referrer, param);
-            if (keyword.length) {
-                ret['mp_keyword'] = keyword;
-            }
-        }
-
-        return ret;
-    },
-
     /**
      * This function detects which browser is running this script.
      * The order of the checks are important since many user agents
@@ -976,25 +693,12 @@ _.info = {
      */
     browser: function(user_agent, vendor, opera) {
         vendor = vendor || ''; // vendor is undefined for at least IE9
-        if (opera || _.includes(user_agent, ' OPR/')) {
-            if (_.includes(user_agent, 'Mini')) {
-                return 'Opera Mini';
-            }
-            return 'Opera';
-        } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
-            return 'BlackBerry';
-        } else if (_.includes(user_agent, 'IEMobile') || _.includes(user_agent, 'WPDesktop')) {
-            return 'Internet Explorer Mobile';
-        } else if (_.includes(user_agent, 'Edge')) {
+        if (_.includes(user_agent, 'Edge')) {
             return 'Microsoft Edge';
-        } else if (_.includes(user_agent, 'FBIOS')) {
-            return 'Facebook Mobile';
         } else if (_.includes(user_agent, 'Chrome')) {
             return 'Chrome';
         } else if (_.includes(user_agent, 'CriOS')) {
             return 'Chrome iOS';
-        } else if (_.includes(user_agent, 'UCWEB') || _.includes(user_agent, 'UCBrowser')) {
-            return 'UC Browser';
         } else if (_.includes(user_agent, 'FxiOS')) {
             return 'Firefox iOS';
         } else if (_.includes(vendor, 'Apple')) {
@@ -1004,8 +708,6 @@ _.info = {
             return 'Safari';
         } else if (_.includes(user_agent, 'Android')) {
             return 'Android Mobile';
-        } else if (_.includes(user_agent, 'Konqueror')) {
-            return 'Konqueror';
         } else if (_.includes(user_agent, 'Firefox')) {
             return 'Firefox';
         } else if (_.includes(user_agent, 'MSIE') || _.includes(user_agent, 'Trident/')) {
@@ -1025,18 +727,13 @@ _.info = {
     browserVersion: function(userAgent, vendor, opera) {
         var browser = _.info.browser(userAgent, vendor, opera);
         var versionRegexs = {
-            'Internet Explorer Mobile': /rv:(\d+(\.\d+)?)/,
             'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
             'Chrome': /Chrome\/(\d+(\.\d+)?)/,
             'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
-            'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
             'Safari': /Version\/(\d+(\.\d+)?)/,
             'Mobile Safari': /Version\/(\d+(\.\d+)?)/,
-            'Opera': /(Opera|OPR)\/(\d+(\.\d+)?)/,
             'Firefox': /Firefox\/(\d+(\.\d+)?)/,
             'Firefox iOS': /FxiOS\/(\d+(\.\d+)?)/,
-            'Konqueror': /Konqueror:(\d+(\.\d+)?)/,
-            'BlackBerry': /BlackBerry (\d+(\.\d+)?)/,
             'Android Mobile': /android\s(\d+(\.\d+)?)/,
             'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
             'Mozilla': /rv:(\d+(\.\d+)?)/
@@ -1055,9 +752,6 @@ _.info = {
     os: function() {
         var a = userAgent;
         if (/Windows/i.test(a)) {
-            if (/Phone/.test(a) || /WPDesktop/.test(a)) {
-                return 'Windows Phone';
-            }
             return 'Windows';
         } else if (/(iPhone|iPad|iPod)/.test(a)) {
             return 'iOS';
@@ -1144,7 +838,6 @@ _.info = {
 _['toArray']            = _.toArray;
 _['isObject']           = _.isObject;
 _['JSONEncode']         = _.JSONEncode;
-_['JSONDecode']         = _.JSONDecode;
 _['isBlockedUA']        = _.isBlockedUA;
 _['isEmptyObject']      = _.isEmptyObject;
 _['info']               = _.info;
@@ -1601,7 +1294,7 @@ MixpanelPersistence.prototype.save = function() {
     if (this.disabled) { return; }
     this.storage.set(
         this.name,
-        _.JSONEncode(this['props']),
+        this['props']),
         this.expire_days,
         this.cross_subdomain,
         this.secure
@@ -1666,33 +1359,6 @@ MixpanelPersistence.prototype.unregister = function(prop) {
         delete this['props'][prop];
         this.save();
     }
-};
-
-MixpanelPersistence.prototype.update_campaign_params = function() {
-    if (!this.campaign_params_saved) {
-        this.register_once(_.info.campaignParams());
-        this.campaign_params_saved = true;
-    }
-};
-
-MixpanelPersistence.prototype.update_search_keyword = function(referrer) {
-    this.register(_.info.searchInfo(referrer));
-};
-
-// EXPORTED METHOD, we test this directly.
-MixpanelPersistence.prototype.update_referrer_info = function(referrer) {
-    // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
-    this.register_once({
-        '$initial_referrer': referrer || '$direct',
-        '$initial_referring_domain': _.info.referringDomain(referrer) || '$direct'
-    }, '');
-};
-
-MixpanelPersistence.prototype.get_referrer_info = function() {
-    return _.strip_empty_properties({
-        '$initial_referrer': this['props']['$initial_referrer'],
-        '$initial_referring_domain': this['props']['$initial_referring_domain']
-    });
 };
 
 // safely fills the passed in object with stored properties,
@@ -2425,16 +2091,11 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
     if (_.isObject(prop)) {
         callback = to;
     }
-    // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(document.referrer);
-    }
 
     // update $set object with default people properties
     data[SET_ACTION] = _.extend(
         {},
         _.info.people_properties(),
-        this._mixpanel['persistence'].get_referrer_info(),
         data[SET_ACTION]
     );
     return this._send_request(data, callback);
@@ -2919,8 +2580,6 @@ var DEFAULT_CONFIG = {
     'persistence_name':                  '',
     'cookie_name':                       '',
     'loaded':                            function() {},
-    'store_google':                      true,
-    'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
     'img':                               false,
@@ -3217,18 +2876,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                 if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
                     if (req.status === 200) {
                         if (callback) {
-                            if (verbose_mode) {
-                                var response;
-                                try {
-                                    response = _.JSONDecode(req.responseText);
-                                } catch (e) {
-                                    console$1.error(e);
-                                    return;
-                                }
-                                callback(response);
-                            } else {
-                                callback(Number(req.responseText));
-                            }
+                            callback(Number(req.responseText));
                         }
                     } else {
                         var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
@@ -3374,12 +3022,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     // set defaults
     properties = properties || {};
     properties['token'] = this.get_config('token');
-
-    // update persistence
-    this['persistence'].update_search_keyword(document$1.referrer);
-
-    if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
-    if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document$1.referrer); }
 
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
@@ -4043,8 +3685,6 @@ MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.protot
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
-MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.prototype.update_search_keyword;
-MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.prototype.update_referrer_info;
 MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
 MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
 
@@ -4110,42 +3750,14 @@ var add_dom_loaded_handler = function() {
         });
     }
 
-    function do_scroll_check() {
-        try {
-            document$1.documentElement.doScroll('left');
-        } catch(e) {
-            setTimeout(do_scroll_check, 1);
-            return;
-        }
-
+    if (document$1.readyState === 'complete') {
+        // safari 4 can fire the DOMContentLoaded event before loading all
+        // external JS (including this file). you will see some copypasta
+        // on the internet that checks for 'complete' and 'loaded', but
+        // 'loaded' is an IE thing
         dom_loaded_handler();
-    }
-
-    if (document$1.addEventListener) {
-        if (document$1.readyState === 'complete') {
-            // safari 4 can fire the DOMContentLoaded event before loading all
-            // external JS (including this file). you will see some copypasta
-            // on the internet that checks for 'complete' and 'loaded', but
-            // 'loaded' is an IE thing
-            dom_loaded_handler();
-        } else {
-            document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
-        }
-    } else if (document$1.attachEvent) {
-        // IE
-        document$1.attachEvent('onreadystatechange', dom_loaded_handler);
-
-        // check to make sure we arn't in a frame
-        var toplevel = false;
-        try {
-            toplevel = window$1.frameElement === null;
-        } catch(e) {
-            // noop
-        }
-
-        if (document$1.documentElement.doScroll && toplevel) {
-            do_scroll_check();
-        }
+    } else {
+        document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
     }
 };
 
