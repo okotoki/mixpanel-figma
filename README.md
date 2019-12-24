@@ -23,15 +23,15 @@ So I stripped file to make it much smaller. Things removed:
 - notification related things (don't even know what they are)
 - autotrack – some feature Mixpanel discontinued
 
-If size does not bother you or something you need was removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel-patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
+If size does not bother you or something you need was removed – use `npm i mixpanel-figma@1.0.0` or [raw file](https://github.com/okotoki/mixpanel-figma/blob/master/mixpanel-patched.js) ([diff](https://github.com/okotoki/mixpanel-figma/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
 
 ## Usage
 
 Installation
 ```sh
-npm i figma-mixpanel
+npm i mixpanel-figma
 # or using Yarn
-yarn add figma-mixpanel
+yarn add mixpanel-figma
 ```
 
 Import package and use client as you usually would.
