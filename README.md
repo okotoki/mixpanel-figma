@@ -4,22 +4,22 @@
 Original Mixpanel client will **NOT** work in Figma plugins UI.
 
 **Why?**  
-Elector limitation when Iframe content is loaded as Data-URI. Both `localStorage` and `document.cookie` are not available ([similar problem](https://stackoverflow.com/questions/44973467/electron-browserwindow-facebook-login-failed-to-set-cookies)).
+Electron limitation when Iframe content is loaded as Data-URI. Both `localStorage` and `document.cookie` are not available ([similar problem](https://stackoverflow.com/questions/44973467/electron-browserwindow-facebook-login-failed-to-set-cookies)).
 
-Mixpanel client has configuration option to switch off persistance `disable_persistence`, but it won't help, as it accesses 
+Mixpanel client has configuration option to switch off persistance `disable_persistence`, but it won't help, as it accesses `cookie`, which  crashes the client 🤷‍♂️.
 
 ## Fix
 Patch the original file to not access `document.cookie`/`localStorage`.
 
 Original file - [mixpanel/mixpanel-js](https://github.com/mixpanel/mixpanel-js/blob/1c4d98b4a485fbf4dc4421f00c33f3b19530b307/dist/mixpanel.cjs.js)
-Patch diff – [mixpanel.patched.js]()
+Patched file – [mixpanel.patched.js](mixpanel.patched.js)
 
 ## Bonus points. Size reduction.
 Mixpanel client is a HUGE file (~250kb) and team is [not addressing it](https://github.com/mixpanel/mixpanel-js/issues/128).
 
-So I additionally stripped file to make it much smaller. 
+So I stripped file to make it much smaller. 
 
-If size does not bother you or something you need were removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel.patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
+If size does not bother you or something you need was removed – use `npm i figma-mixpanel@1.0.0` or [raw file](https://github.com/okotoki/figma-mixpanel/blob/master/mixpanel.patched.js) ([diff](https://github.com/okotoki/figma-mixpanel/commit/3c161fb714fd6bab1c21b9f3aea48c5f2e0a0f43))
 
 ## Usage
 
@@ -45,7 +45,7 @@ mixpanel.init(YOUR_MIXPANEL_KEY, {
 
 ## `identify` support
 
-Sinve there is no persistance – every time someone opens your plugin Mixpanel would assume it a unique visitor/user.
+Since there is no persistance – every time someone opens your plugin Mixpanel would assume it a unique visitor/user.
 
 To fix that, generate user_id for persistance on main thread side and store it in plugin settings.
 
