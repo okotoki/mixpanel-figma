@@ -1,6 +1,6 @@
 {
   "name": "figma-mixpanel",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Mixpanel client patched for Figma plugins",
   "main": "mixpanel.patched.js",
   "scripts": {
