@@ -1862,7 +1862,6 @@ var MixpanelPersistence = function(config) {
 
     this.load();
     this.update_config(config);
-    this.upgrade(config);
     this.save();
 };
 
@@ -1884,61 +1883,6 @@ MixpanelPersistence.prototype.load = function() {
 
     if (entry) {
         this['props'] = _.extend({}, entry);
-    }
-};
-
-MixpanelPersistence.prototype.upgrade = function(config) {
-    var upgrade_from_old_lib = config['upgrade'],
-        old_cookie_name,
-        old_cookie;
-
-    if (upgrade_from_old_lib) {
-        old_cookie_name = 'mp_super_properties';
-        // Case where they had a custom cookie name before.
-        if (typeof(upgrade_from_old_lib) === 'string') {
-            old_cookie_name = upgrade_from_old_lib;
-        }
-
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        // remove the cookie
-        this.storage.remove(old_cookie_name);
-        this.storage.remove(old_cookie_name, true);
-
-        if (old_cookie) {
-            this['props'] = _.extend(
-                this['props'],
-                old_cookie['all'],
-                old_cookie['events']
-            );
-        }
-    }
-
-    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-        // special case to handle people with cookies of the form
-        // mp_TOKEN_INSTANCENAME from the first release of this library
-        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        if (old_cookie) {
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            // Save the prop values that were in the cookie from before -
-            // this should only happen once as we delete the old one.
-            this.register_once(old_cookie);
-        }
-    }
-
-    if (this.storage === _.localStorage) {
-        old_cookie = _.cookie.parse(this.name);
-
-        _.cookie.remove(this.name);
-        _.cookie.remove(this.name, true);
-
-        if (old_cookie) {
-            this.register_once(old_cookie);
-        }
     }
 };
 
@@ -3259,8 +3203,6 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
     'api_method':                        'POST',
-    'app_host':                          'https://mixpanel.com',
-    'cdn':                               'https://cdn.mxpnl.com',
     'cross_subdomain_cookie':            true,
     'persistence':                       'cookie',
     'persistence_name':                  '',
@@ -3274,7 +3216,6 @@ var DEFAULT_CONFIG = {
     'track_pageview':                    true,
     'debug':                             false,
     'cookie_expiration':                 365,
-    'upgrade':                           false,
     'disable_persistence':               false,
     'disable_cookie':                    false,
     'secure_cookie':                     false,
@@ -3284,9 +3225,7 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
-    'xhr_headers':                       {}, // { header: value, header2: value }
-    'inapp_protocol':                    '//',
-    'inapp_link_new_window':             false
+    'xhr_headers':                       {} // { header: value, header2: value }
 };
 
 var DOM_LOADED = false;
@@ -3702,8 +3641,6 @@ MixpanelLib.prototype.disable = function(events) {
  *     // track an event named 'Registered'
  *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
  *
- * To track link clicks or form submissions, see track_links() or track_forms().
- *
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
@@ -4072,24 +4009,9 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // should we track a page view on page load
  *       track_pageview: true
  *
- *       // if you set upgrade to be true, the library will check for
- *       // a cookie from our old js library and import super
- *       // properties from it, then the old cookie is deleted
- *       // The upgrade config option only works in the initialization,
- *       // so make sure you set it when you create the library.
- *       upgrade: false
- *
  *       // extra HTTP request headers to set for each API request, in
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
- *
- *       // protocol for fetching in-app message resources, e.g.
- *       // 'https://' or 'http://'; defaults to '//' (which defers to the
- *       // current page's protocol)
- *       inapp_protocol: '//'
- *
- *       // whether to open in-app message link in new tab/window
- *       inapp_link_new_window: false
  *     }
  *
  *
@@ -4390,8 +4312,6 @@ MixpanelLib.prototype['init']                               = MixpanelLib.protot
 MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
 MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
 MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
-MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
-MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
 MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
 MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
 MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
