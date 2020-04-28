@@ -37,7 +37,7 @@ yarn add mixpanel-figma
 Import package and use client as you usually would.
 ```typescript
 // main.ts
-import * as mixpanel from 'figma-messenger'
+import * as mixpanel from 'mixpanel-figma'
 
 // disabling via config just in case
 mixpanel.init(YOUR_MIXPANEL_KEY, {
@@ -77,7 +77,7 @@ const getUserId = async () => {
   return userId
 }
 // get or set if not yet set.
-const userId = await getUserId(
+const userId = await getUserId()
 // send to iframe
 figma.ui.sendMessage(userId)
 
