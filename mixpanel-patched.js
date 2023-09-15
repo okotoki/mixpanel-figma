@@ -5,7 +5,24 @@ var Config = {
     LIB_VERSION: '2.32.0'
 };
 
-var window$1 = window;
+// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
+var window$1;
+if (typeof(window) === 'undefined') {
+  var loc = {
+    hostname: ''
+  };
+  window$1 = {
+    navigator: { userAgent: '' },
+    document: {
+      location: loc,
+      referrer: ''
+    },
+    screen: { width: 0, height: 0 },
+    location: loc
+  };
+} else {
+  window$1 = window;
+}
 
 /*
  * Saved references to long variable names, so that closure compiler can
