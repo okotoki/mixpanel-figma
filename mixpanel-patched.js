@@ -3767,14 +3767,16 @@ var add_dom_loaded_handler = function() {
         });
     }
 
-    if (document$1.readyState === 'complete') {
-        // safari 4 can fire the DOMContentLoaded event before loading all
-        // external JS (including this file). you will see some copypasta
-        // on the internet that checks for 'complete' and 'loaded', but
-        // 'loaded' is an IE thing
-        dom_loaded_handler();
-    } else {
-        document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+    if (document$1.addEventListener) {
+      if (document$1.readyState === 'complete') {
+          // safari 4 can fire the DOMContentLoaded event before loading all
+          // external JS (including this file). you will see some copypasta
+          // on the internet that checks for 'complete' and 'loaded', but
+          // 'loaded' is an IE thing
+          dom_loaded_handler();
+      } else {
+          document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+      }
     }
 };
 
